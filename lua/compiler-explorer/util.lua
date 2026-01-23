@@ -6,8 +6,10 @@ local api = vim.api
 local M = {}
 
 -- Creates a new buffer and window or uses the previous one.
-function M.create_window_buffer(source_bufnr, compiler_id, new_window)
+function M.create_window_buffer(source_bufnr, compiler_id, new_window, opts)
   local conf = ce.config.get_config()
+  opts = opts or {}
+  local filetype = opts.filetype or "asm"
 
   local winid = ce.clientstate.get_last_bufwinid(source_bufnr)
   if winid == nil then
@@ -17,16 +19,16 @@ function M.create_window_buffer(source_bufnr, compiler_id, new_window)
     if new_window then vim.cmd(conf.split) end
   end
 
-  local asm_bufnr = api.nvim_create_buf(false, true)
-  local name = "compiler-explorer://" .. compiler_id .. "-" .. math.random(100)
-  api.nvim_buf_set_name(asm_bufnr, name)
-  api.nvim_set_option_value("ft", "asm", { buf = asm_bufnr })
-  api.nvim_set_option_value("bufhidden", "wipe", { buf = asm_bufnr })
+  local out_bufnr = api.nvim_create_buf(false, true)
+  local name = "compiler-explorer://" .. compiler_id .. "-" .. filetype .. "-" .. math.random(100)
+  api.nvim_buf_set_name(out_bufnr, name)
+  api.nvim_set_option_value("ft", filetype, { buf = out_bufnr })
+  api.nvim_set_option_value("bufhidden", "wipe", { buf = out_bufnr })
 
   local win = api.nvim_get_current_win()
-  api.nvim_win_set_buf(win, asm_bufnr)
+  api.nvim_win_set_buf(win, out_bufnr)
 
-  return asm_bufnr
+  return out_bufnr
 end
 
 function M.set_binary_extmarks(lines, bufnr)

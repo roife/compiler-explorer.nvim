@@ -78,6 +78,7 @@ compiler-explorer-commands` or the table below:
 | --- | --- | --- |
 | `:CECompile` | Compile the source code in the current buffer and dump assembly output to a new window. Also accepts a visual selection. | source code buffer |
 | `:CECompileLive` | Same as `:CECompile`, but it will also try to recompile the source code every time the buffer is saved. | source code buffer |
+| `:CECompileLLVMIR` | Toggle LLVM IR output for the last `:CECompile` run. | source code buffer |
 | `:CEFormat` | Format the source code. | source code buffer |
 | `:CEAddLibrary` | Add a library to be used by future calls of `:CECompile`. | source code buffer |
 | `:CELoadExample` | Load an existing code example to a new tab. | any buffer |
@@ -101,6 +102,7 @@ compiler-explorer-commands` or the table below:
   compiler.
 - `:CECompile binary=true` show binary opcodes and address using virtual text.
 - `:CECompile intel=false` use AT&T syntax instead of intel.
+- `:CECompileLLVMIR` opens or closes the LLVM IR window for the last compile.
 - `:CECompileLive` creates an autcommand that runs `:CECompile` every time
   the buffer is saved (`BufWritePost`).
 

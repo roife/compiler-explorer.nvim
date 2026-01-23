@@ -37,7 +37,7 @@ M.create = function()
   return vim.base64.encode(vim.json.encode({ sessions = sessions }))
 end
 
-M.save_info = function(source_bufnr, asm_bufnr, body)
+M.save_info = function(source_bufnr, asm_bufnr, body, range)
   M.state[source_bufnr] = M.state[source_bufnr] or {}
 
   M.state[source_bufnr][asm_bufnr] = {
@@ -49,6 +49,7 @@ M.save_info = function(source_bufnr, asm_bufnr, body)
       function(lib) return { name = lib.id, ver = lib.version } end,
       body.options.libraries
     ),
+    range = range,
   }
 end
 
@@ -56,6 +57,15 @@ M.get_last_bufwinid = function(source_bufnr)
   for _, asm_buffer in ipairs(vim.tbl_keys(M.state[source_bufnr] or {})) do
     local winid = fn.bufwinid(asm_buffer)
     if winid ~= -1 then return winid end
+  end
+  return nil
+end
+
+M.get_info = function(asm_bufnr)
+  for source_bufnr, asm_data in pairs(M.state) do
+    if asm_data[asm_bufnr] then
+      return source_bufnr, asm_data[asm_bufnr]
+    end
   end
   return nil
 end

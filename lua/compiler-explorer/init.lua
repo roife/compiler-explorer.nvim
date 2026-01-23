@@ -168,7 +168,8 @@ M.compile = ce.async.void(function(opts, live)
     )
   end
 
-  ce.clientstate.save_info(source_bufnr, asm_bufnr, body)
+  local range = { line1 = opts.line1, line2 = opts.line2 }
+  ce.clientstate.save_info(source_bufnr, asm_bufnr, body, range)
 
   api.nvim_buf_set_var(asm_bufnr, "arch", compiler.instructionSet) -- used by show_tooltips
   api.nvim_buf_set_var(asm_bufnr, "labels", response.labelDefinitions) -- used by goto_label
@@ -180,6 +181,96 @@ M.compile = ce.async.void(function(opts, live)
     {}
   )
   api.nvim_buf_create_user_command(asm_bufnr, "CEGotoLabel", M.goto_label, {})
+end)
+
+M.compile_llvm_ir = ce.async.void(function(opts)
+  local asm_winnr = api.nvim_get_current_win()
+  local asm_bufnr = api.nvim_get_current_buf()
+
+  local source_bufnr, info = ce.clientstate.get_info(asm_bufnr)
+  if info == nil then
+    ce.alert.warn("Run :CECompileLLVMIR on an ASM output buffer.")
+    return
+  end
+
+
+  local ok, compiler = pcall(ce.rest.check_compiler, info.id.id)
+  if not ok then
+    ce.alert.error("Could not compile code with compiler id %s", info.id.id)
+    return
+  end
+
+  if compiler.supportsIrView == false then
+    ce.alert.error("Compiler %s does not support LLVM IR output.", compiler.name)
+    return
+  end
+
+  local range = info.range or { line1 = opts.line1, line2 = opts.line2 }
+  local buf_lines =
+    api.nvim_buf_get_lines(source_bufnr, range.line1 - 1, range.line2, false)
+  local args = {
+    source = table.concat(buf_lines, "\n"),
+    compiler = compiler.id,
+    flags = info.flags or "",
+    lang = compiler.lang,
+  }
+  if info.filters then
+    for key, value in pairs(info.filters) do
+      args[key] = value
+    end
+  end
+
+  local body = ce.rest.create_compile_body(args)
+  body.options.compilerOptions.produceIr = {
+    filterDebugInfo = true,
+    filterIRMetadata = true,
+    filterAttributes = true,
+    filterComments = true,
+    noDiscardValueNames = true,
+    demangle = true,
+    showOptimized = true,
+  }
+  body.options.filters.binary = false
+
+  local response
+  ok, response = pcall(ce.rest.compile_post, compiler.id, body)
+
+  if not ok then
+    ce.alert.error(response)
+    return
+  end
+
+  if response.irOutput == nil or response.irOutput == vim.NIL then
+    ce.alert.error("Compiler %s does not support LLVM IR output.", compiler.name)
+    return
+  end
+
+  local ir_asm = response.irOutput.asm or {}
+  local ir_lines = vim.tbl_map(function(line) return line.text end, ir_asm)
+  if vim.tbl_isempty(ir_lines) then ir_lines = { "<No LLVM IR generated>" } end
+
+  local ir_bufnr = ce.util.create_window_buffer(
+    source_bufnr,
+    compiler.id,
+    true,
+    { filetype = "llvm" }
+  )
+  api.nvim_buf_clear_namespace(ir_bufnr, -1, 0, -1)
+
+  api.nvim_set_option_value("modifiable", true, { buf = ir_bufnr })
+  api.nvim_buf_set_lines(ir_bufnr, 0, -1, false, ir_lines)
+
+  if response.code == 0 then
+    ce.alert.info("LLVM IR generated with %s compiler.", compiler.name)
+  else
+    ce.alert.error("Could not generate LLVM IR with %s", compiler.name)
+  end
+
+  api.nvim_set_current_win(asm_winnr)
+
+  api.nvim_set_option_value("modifiable", false, { buf = ir_bufnr })
+
+  ce.autocmd.init_line_match(source_bufnr, ir_bufnr, ir_asm, range.line1 - 1)
 end)
 
 M.open_website = function()

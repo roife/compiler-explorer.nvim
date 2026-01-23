@@ -32,6 +32,15 @@ command(
   }
 )
 
+command(
+  "CECompileLLVMIR",
+  function(opts) require("compiler-explorer").compile_llvm_ir(opts) end,
+  {
+    range = "%",
+    bang = true,
+  }
+)
+
 command("CEFormat", function() require("compiler-explorer").format() end, {})
 
 command(
