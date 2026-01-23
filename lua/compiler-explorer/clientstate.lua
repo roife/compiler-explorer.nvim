@@ -37,19 +37,19 @@ M.create = function()
   return vim.base64.encode(vim.json.encode({ sessions = sessions }))
 end
 
-M.save_info = function(source_bufnr, asm_bufnr, body, range)
+M.save_info = function(source_bufnr, asm_bufnr, body, opts)
   M.state[source_bufnr] = M.state[source_bufnr] or {}
 
   M.state[source_bufnr][asm_bufnr] = {
     lang = body.lang,
-    id = body.compiler,
+    compiler_id = body.compiler.id,
     options = body.options.userArguments,
     filters = body.options.filters,
     libs = vim.tbl_map(
       function(lib) return { name = lib.id, ver = lib.version } end,
       body.options.libraries
     ),
-    range = range,
+    range = opts.range,
   }
 end
 

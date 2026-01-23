@@ -6,10 +6,8 @@ local api = vim.api
 local M = {}
 
 -- Creates a new buffer and window or uses the previous one.
-function M.create_window_buffer(source_bufnr, compiler_id, new_window, opts)
+function M.create_window_buffer(source_bufnr, compiler_id, new_window, filetype)
   local conf = ce.config.get_config()
-  opts = opts or {}
-  local filetype = opts.filetype or "asm"
 
   local winid = ce.clientstate.get_last_bufwinid(source_bufnr)
   if winid == nil then

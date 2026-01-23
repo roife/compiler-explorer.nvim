@@ -101,8 +101,9 @@ M.compile = ce.async.void(function(opts, live)
       default = conf.compiler_flags,
     })
     vim.cmd("redraw")
-    args.compiler = compiler
   end
+
+  args.compiler = compiler
 
   ce.async.scheduler()
 
@@ -138,7 +139,7 @@ M.compile = ce.async.void(function(opts, live)
   )
 
   local asm_bufnr =
-    ce.util.create_window_buffer(source_bufnr, compiler.id, opts.bang)
+    ce.util.create_window_buffer(source_bufnr, compiler.id, opts.bang, "asm")
   api.nvim_buf_clear_namespace(asm_bufnr, -1, 0, -1)
 
   api.nvim_set_option_value("modifiable", true, { buf = asm_bufnr })
@@ -169,7 +170,12 @@ M.compile = ce.async.void(function(opts, live)
   end
 
   local range = { line1 = opts.line1, line2 = opts.line2 }
-  ce.clientstate.save_info(source_bufnr, asm_bufnr, body, range)
+  ce.clientstate.save_info(
+    source_bufnr,
+    asm_bufnr,
+    body,
+    { range = range }
+  )
 
   api.nvim_buf_set_var(asm_bufnr, "arch", compiler.instructionSet) -- used by show_tooltips
   api.nvim_buf_set_var(asm_bufnr, "labels", response.labelDefinitions) -- used by goto_label
@@ -193,10 +199,9 @@ M.compile_llvm_ir = ce.async.void(function(opts)
     return
   end
 
-
-  local ok, compiler = pcall(ce.rest.check_compiler, info.id.id)
+  local ok, compiler = pcall(ce.rest.check_compiler, info.compiler_id)
   if not ok then
-    ce.alert.error("Could not compile code with compiler id %s", info.id.id)
+    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
     return
   end
 
@@ -249,12 +254,7 @@ M.compile_llvm_ir = ce.async.void(function(opts)
   local ir_lines = vim.tbl_map(function(line) return line.text end, ir_asm)
   if vim.tbl_isempty(ir_lines) then ir_lines = { "<No LLVM IR generated>" } end
 
-  local ir_bufnr = ce.util.create_window_buffer(
-    source_bufnr,
-    compiler.id,
-    true,
-    { filetype = "llvm" }
-  )
+  local ir_bufnr = ce.util.create_window_buffer(source_bufnr, compiler.id, true, "llvm")
   api.nvim_buf_clear_namespace(ir_bufnr, -1, 0, -1)
 
   api.nvim_set_option_value("modifiable", true, { buf = ir_bufnr })
