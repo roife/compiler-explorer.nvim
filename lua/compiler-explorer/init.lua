@@ -112,12 +112,13 @@ M.compile = ce.async.void(function(opts, live)
   -- Update LLVM IR if needed
   local _, info = ce.clientstate.get_info_by_asm(asm_bufnr)
   local ir_bufnr = info and info.ir_bufnr or nil
-  if ir_bufnr then M.compile_llvm_ir { asm_bufnr = asm_bufnr } end
 
   ce.clientstate.save_info(source_bufnr, asm_bufnr, body, {
     range = { line1 = opts.line1, line2 = opts.line2 },
     ir_bufnr = ir_bufnr,
   })
+  if ir_bufnr then M.compile_llvm_ir { asm_bufnr = asm_bufnr } end
+
 
   -- Create autocmd for live compilation
   if live and not opts.reuse_bufnr then
@@ -213,6 +214,8 @@ M.compile_llvm_ir = ce.async.void(function(opts)
     ce.alert.info("LLVM IR generated with %s compiler.", compiler.name)
   else
     ce.alert.error("Could not generate LLVM IR with %s", compiler.name)
+    ce.alert.error("%s", vim.inspect(body))
+    ce.alert.error("%s", vim.inspect(response))
   end
 
   -- Write IR output to buffer
