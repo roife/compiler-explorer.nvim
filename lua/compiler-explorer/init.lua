@@ -4,10 +4,6 @@ local api, fn = vim.api, vim.fn
 
 local M = {}
 
--- Return a function to avoid caching the vim.ui functions
-local get_select = function() return ce.async.wrap(vim.ui.select, 3) end
-local get_input = function() return ce.async.wrap(vim.ui.input, 2) end
-
 local group = api.nvim_create_augroup("CompilerExplorerLive", { clear = true })
 
 M.setup = function(user_config) ce.config.setup(user_config or {}) end
@@ -28,8 +24,6 @@ local function ensure_compiler_selection(args)
   end
 
   local conf = ce.config.get_config()
-  local vim_select = get_select()
-  local vim_input = get_input()
 
   -- Get compiler from user input
   local lang_list = ce.rest.languages_get()
@@ -51,13 +45,11 @@ local function ensure_compiler_selection(args)
   end
 
   local lang = #possible_langs == 1 and possible_langs[1]
-    or vim.select(possible_langs, {
+    or ce.util.prompt_select(possible_langs, {
       prompt = "Select language> ",
       format_item = function(item) return item.name end,
     })
-
   if not lang then return nil end
-  vim.cmd("redraw")
 
   -- Extend config with config specific to the language
   local lang_conf = conf.languages[lang.id]
@@ -68,30 +60,20 @@ local function ensure_compiler_selection(args)
     if not ok then ce.alert.error("Could not compile code with compiler id %s", conf.compiler) end
   else
     local compilers = ce.rest.compilers_get(lang.id)
-    compiler = vim_select(compilers, {
+    compiler = ce.util.prompt_select(compilers, {
       prompt = "Select compiler> ",
       format_item = function(item) return item.name end,
     })
-
     if not compiler then return nil end
-    vim.cmd("redraw")
   end
 
   -- Choose compiler options
-  args.flags = vim_input {
+  args.flags = ce.util.prompt_input {
     prompt = "Select compiler options> ",
     default = conf.compiler_flags,
   }
-  vim.cmd("redraw")
 
   return compiler
-end
-
-local function write_output_buf(bufnr, lines)
-  api.nvim_buf_clear_namespace(bufnr, -1, 0, -1)
-  api.nvim_set_option_value("modifiable", true, { buf = bufnr })
-  api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-  api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 end
 
 M.compile = ce.async.void(function(opts, live)
@@ -124,7 +106,7 @@ M.compile = ce.async.void(function(opts, live)
   local asm_bufnr = opts.reuse_bufnr
     or ce.util.create_window_buffer(source_bufnr, compiler.id, opts.bang, "asm")
   local asm_lines = vim.tbl_map(function(line) return line.text end, response.asm)
-  write_output_buf(asm_bufnr, asm_lines)
+  ce.util.write_output_buf(asm_bufnr, asm_lines)
   if args.binary then ce.util.set_binary_extmarks(response.asm, asm_bufnr) end
 
   -- Update LLVM IR if needed
@@ -236,7 +218,7 @@ M.compile_llvm_ir = ce.async.void(function(opts)
   -- Write IR output to buffer
   local ir_bufnr = ce.util.create_ir_window(info.ir_bufnr, compiler.id, "llvm")
   local ir_lines = vim.tbl_map(function(line) return line.text end, response.irOutput.asm)
-  write_output_buf(ir_bufnr, ir_lines)
+  ce.util.write_output_buf(ir_bufnr, ir_lines)
 
   -- Update clientstate
   info.ir_bufnr = ir_bufnr
@@ -274,7 +256,6 @@ M.open_website = function()
 end
 
 M.add_library = ce.async.void(function()
-  local vim_select = get_select()
   local lang_list = ce.rest.languages_get()
 
   -- Infer language based on extension and prompt user.
@@ -291,13 +272,11 @@ M.add_library = ce.async.void(function()
   end
 
   local lang = #possible_langs == 1 and possible_langs[1]
-    or vim_select(possible_langs, {
+    or ce.util.prompt_select(possible_langs, {
       prompt = "Select language> ",
       format_item = function(item) return item.name end,
     })
-
   if not lang then return end
-  vim.cmd("redraw")
 
   local libs = ce.rest.libraries_get(lang.id)
   if vim.tbl_isempty(libs) then
@@ -306,22 +285,18 @@ M.add_library = ce.async.void(function()
   end
 
   -- Choose library
-  local lib = vim_select(libs, {
+  local lib = ce.util.prompt_select(libs, {
     prompt = "Select library> ",
     format_item = function(item) return item.name end,
   })
-
   if not lib then return end
-  vim.cmd("redraw")
 
   -- Choose version
-  local version = vim_select(lib.versions, {
+  local version = ce.util.prompt_select(lib.versions, {
     prompt = "Select library version> ",
     format_item = function(item) return item.version end,
   })
-
   if not version then return end
-  vim.cmd("redraw")
 
   -- Add lib to buffer variable, overwriting previous library version if already present
   vim.b.libs = vim.tbl_deep_extend("force", vim.b.libs or {}, { [lib.id] = version.version })
@@ -330,28 +305,24 @@ M.add_library = ce.async.void(function()
 end)
 
 M.format = ce.async.void(function()
-  local vim_select = get_select()
   -- Get contents of current buffer
   local source = get_buf_contents(0, { line1 = 1, line2 = -1 })
 
   -- Select formatter
   local formatters = ce.rest.formatters_get()
-  local formatter = vim_select(formatters, {
+  local formatter = ce.util.prompt_select(formatters, {
     prompt = "Select formatter> ",
     format_item = function(item) return item.name end,
   })
   if not formatter then return end
-  vim.cmd("redraw")
 
   local style = formatter.styles[1] or "__DefaultStyle"
   if #formatter.styles > 0 then
-    style = vim_select(formatter.styles, {
+    style = ce.util.prompt_select(formatter.styles, {
       prompt = "Select formatter style> ",
       format_item = function(item) return item end,
     })
-
     if not style then return end
-    vim.cmd("redraw")
   end
 
   local body = ce.rest.create_format_body(source, style)
@@ -403,7 +374,6 @@ M.goto_label = function()
 end
 
 M.load_example = ce.async.void(function()
-  local vim_select = get_select()
   local examples = ce.rest.list_examples_get()
 
   local examples_by_lang = {}
@@ -418,15 +388,13 @@ M.load_example = ce.async.void(function()
   local langs = vim.tbl_keys(examples_by_lang)
   table.sort(langs)
 
-  local lang_id = vim_select(langs, {
+  local lang_id = ce.util.prompt_select(langs, {
     prompt = "Select language> ",
     format_item = function(item) return item end,
   })
-
   if not lang_id then return end
-  vim.cmd("redraw")
 
-  local example = vim_select(examples_by_lang[lang_id], {
+  local example = ce.util.prompt_select(examples_by_lang[lang_id], {
     prompt = "Select example> ",
     format_item = function(item) return item.name end,
   })

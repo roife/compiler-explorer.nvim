@@ -119,6 +119,27 @@ function M.parse_args(fargs)
   return args
 end
 
+function M.prompt_select(items, opts)
+  local vim_select = ce.async.wrap(vim.ui.select, 3)
+  local choice = vim_select(items, opts)
+  vim.cmd("redraw")
+  return choice
+end
+
+function M.prompt_input(opts)
+  local vim_input = ce.async.wrap(vim.ui.input, 2)
+  local value = vim_input(opts)
+  vim.cmd("redraw")
+  return value
+end
+
+function M.write_output_buf(bufnr, lines)
+  api.nvim_buf_clear_namespace(bufnr, -1, 0, -1)
+  api.nvim_set_option_value("modifiable", true, { buf = bufnr })
+  api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  api.nvim_set_option_value("modifiable", false, { buf = bufnr })
+end
+
 local frames = { "⣼", "⣹", "⢻", "⠿", "⡟", "⣏", "⣧", "⣶" }
 local interval = 100
 
