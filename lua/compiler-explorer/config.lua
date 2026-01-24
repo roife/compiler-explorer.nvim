@@ -8,7 +8,7 @@ M.defaults = {
     jump = false,
   },
   open_qflist = false, --  Open qflist after compilation if there are diagnostics.
-  split = "split", -- How to split the window after the second compile (split/vsplit).
+  split = "auto", -- How to split the window after the second compile (split/vsplit).
   compiler_flags = "",
   job_timeout_ms = 25000, -- Timeout for libuv job in milliseconds.
   languages = { -- Language specific default compiler/flags
@@ -32,8 +32,8 @@ function M.setup(user_config)
     open_qflist = { conf.open_qflist, "boolean" },
     split = {
       conf.split,
-      function(s) return s == "split" or s == "vsplit" end,
-      "split or vsplit",
+      function(s) return s == "auto" or s == "split" or s == "vsplit" end,
+      "auto or split or vsplit",
     },
     compiler_flags = { conf.compiler_flags, "string" },
     job_timeout_ms = { conf.job_timeout_ms, "number" },

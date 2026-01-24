@@ -1,11 +1,8 @@
-local ce = require("compiler-explorer.lazy")
-
 local api, fn = vim.api, vim.fn
 
 local M = {}
 
 M.state = {}
-M.buffers = {}
 
 M.create = function()
   local sessions = {}
@@ -37,6 +34,9 @@ M.create = function()
   return vim.base64.encode(vim.json.encode({ sessions = sessions }))
 end
 
+M.ASM_NAME = "asm"
+M.IR_NAME = "ir"
+
 M.save_info = function(source_bufnr, asm_bufnr, body, opts)
   M.state[source_bufnr] = M.state[source_bufnr] or {}
 
@@ -50,24 +50,25 @@ M.save_info = function(source_bufnr, asm_bufnr, body, opts)
       body.options.libraries
     ),
     range = opts.range,
+    ir_bufnr = opts.ir_bufnr,
   }
 end
 
-M.get_last_bufwinid = function(source_bufnr)
-  for _, asm_buffer in ipairs(vim.tbl_keys(M.state[source_bufnr] or {})) do
-    local winid = fn.bufwinid(asm_buffer)
-    if winid ~= -1 then return winid end
-  end
-  return nil
-end
-
-M.get_info = function(asm_bufnr)
+M.get_info_by_asm = function(asm_bufnr)
   for source_bufnr, asm_data in pairs(M.state) do
     if asm_data[asm_bufnr] then
       return source_bufnr, asm_data[asm_bufnr]
     end
   end
-  return nil
+  return nil, nil
+end
+
+M.get_last_asm_bufwin = function(source_bufnr)
+  for _, asm_bufnr in ipairs(vim.tbl_keys(M.state[source_bufnr] or {})) do
+    local winid = fn.bufwinid(asm_bufnr)
+    if winid ~= -1 then return asm_bufnr, winid end
+  end
+  return nil, nil
 end
 
 return M
