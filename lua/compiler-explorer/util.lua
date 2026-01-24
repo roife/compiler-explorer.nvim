@@ -52,7 +52,12 @@ function M.create_window_buffer(bufnr, compiler_id, new_buffer, filetype)
   if asm_bufnr == nil or new_buffer then
     asm_bufnr = api.nvim_create_buf(false, true)
 
-    local buf_name = "compiler-explorer://" .. compiler_id .. "-" .. filetype .. "-" .. math.random(100)
+    local buf_name = "compiler-explorer://"
+      .. compiler_id
+      .. "-"
+      .. filetype
+      .. "-"
+      .. math.random(100)
     api.nvim_buf_set_name(asm_bufnr, buf_name)
 
     api.nvim_set_option_value("ft", filetype, { buf = asm_bufnr })

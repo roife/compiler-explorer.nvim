@@ -4,9 +4,7 @@ local M = {}
 
 local get = function(url)
   local status, body = ce.http.get(url)
-  if status ~= 200 then
-    error(("GET %s returned %d. %s"):format(url, status, body.error), 0)
-  end
+  if status ~= 200 then error(("GET %s returned %d. %s"):format(url, status, body.error), 0) end
   return body
 end
 
@@ -17,9 +15,7 @@ local post = function(url, req_body, spinner_text)
 
   if not ok then error(status) end
 
-  if status ~= 200 then
-    error(("POST %s returned %d. %s"):format(url, status, body.error), 0)
-  end
+  if status ~= 200 then error(("POST %s returned %d. %s"):format(url, status, body.error), 0) end
   return body
 end
 
@@ -118,13 +114,9 @@ local function body_from_args(args)
   for key, value in pairs(args) do
     if vim.tbl_contains(filters, key) then body.options.filters[key] = value end
 
-    if key == "compiler" or key == "source" or key == "lang" then
-      body[key] = value
-    end
+    if key == "compiler" or key == "source" or key == "lang" then body[key] = value end
 
-    if key == "flags" then
-      body.options.userArguments = value
-    end
+    if key == "flags" then body.options.userArguments = value end
   end
   return body
 end
@@ -145,8 +137,7 @@ end
 
 M.compile_post = function(compiler_id, req_body)
   local conf = ce.config.get_config()
-  local url =
-    table.concat({ conf.url, "api", "compiler", compiler_id, "compile" }, "/")
+  local url = table.concat({ conf.url, "api", "compiler", compiler_id, "compile" }, "/")
 
   return post(url, req_body, "Compiling")
 end
@@ -160,8 +151,7 @@ end
 
 M.load_example_get = function(lang, name)
   local conf = ce.config.get_config()
-  local url =
-    table.concat({ conf.url, "source", "builtin", "load", lang, name }, "/")
+  local url = table.concat({ conf.url, "source", "builtin", "load", lang, name }, "/")
 
   return get(url)
 end

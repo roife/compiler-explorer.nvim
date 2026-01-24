@@ -24,7 +24,7 @@ M._config = M.defaults
 function M.setup(user_config)
   local conf = vim.tbl_deep_extend("force", M._config, user_config)
 
-  vim.validate({
+  vim.validate {
     url = { conf.url, "string" },
     infer_lang = { conf.infer_lang, "boolean" },
     ["line_match.highlight"] = { conf.line_match.highlight, "boolean" },
@@ -38,7 +38,7 @@ function M.setup(user_config)
     compiler_flags = { conf.compiler_flags, "string" },
     job_timeout_ms = { conf.job_timeout_ms, "number" },
     languages = { conf.languages, "table" },
-  })
+  }
 
   M._config = conf
 end

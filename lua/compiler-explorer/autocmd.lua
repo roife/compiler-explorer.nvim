@@ -15,9 +15,7 @@ local function create_matching_lines_dicts(asm, offset)
       and line_obj.source.file == vim.NIL
     then
       local source_idx = line_obj.source.line + offset
-      if source_to_asm[source_idx] == nil then
-        source_to_asm[source_idx] = {}
-      end
+      if source_to_asm[source_idx] == nil then source_to_asm[source_idx] = {} end
 
       table.insert(source_to_asm[source_idx], asm_idx)
       asm_to_source[asm_idx] = source_idx
@@ -32,17 +30,14 @@ M.init_line_match = function(source_bufnr, asm_bufnr, resp, offset)
   if not conf.line_match.highlight and not conf.line_match.jump then return end
 
   local source_to_asm, asm_to_source = create_matching_lines_dicts(resp, offset)
-  if vim.tbl_isempty(source_to_asm) or vim.tbl_isempty(asm_to_source) then
-    return
-  end
+  if vim.tbl_isempty(source_to_asm) or vim.tbl_isempty(asm_to_source) then return end
 
-  local gid =
-    api.nvim_create_augroup("CompilerExplorer" .. asm_bufnr, { clear = true })
+  local gid = api.nvim_create_augroup("CompilerExplorer" .. asm_bufnr, { clear = true })
   local ns = api.nvim_create_namespace("ce-autocmds")
 
   local line_match_cb = function(other_buf, matching_lines)
     if not api.nvim_buf_is_loaded(other_buf) then
-      api.nvim_clear_autocmds({ group = gid })
+      api.nvim_clear_autocmds { group = gid }
       api.nvim_del_augroup_by_id(gid)
       return
     end
@@ -58,18 +53,10 @@ M.init_line_match = function(source_bufnr, asm_bufnr, resp, offset)
     if conf.line_match.highlight then
       for _, linenr in ipairs(hl_list) do
         -- highlight the matching line
-        pcall(
-          vim.hl.range,
-          other_buf,
-          ns,
-          "CursorLine",
-          { linenr - 1, 0 }, 
-          { linenr - 1, -1},
-          {
-            inclusive = inclusive,
-            regtype = "V"
-          }
-        )
+        pcall(vim.hl.range, other_buf, ns, "CursorLine", { linenr - 1, 0 }, { linenr - 1, -1 }, {
+          inclusive = inclusive,
+          regtype = "V",
+        })
       end
     end
 
@@ -77,9 +64,7 @@ M.init_line_match = function(source_bufnr, asm_bufnr, resp, offset)
     if conf.line_match.jump then
       local winid = fn.bufwinid(other_buf)
       pcall(api.nvim_win_set_cursor, winid, { hl_list[1], 0 })
-      api.nvim_win_call(winid, function()
-        vim.cmd("normal! zz")
-      end)
+      api.nvim_win_call(winid, function() vim.cmd("normal! zz") end)
     end
   end
 
@@ -113,7 +98,7 @@ M.init_line_match = function(source_bufnr, asm_bufnr, resp, offset)
     callback = function()
       api.nvim_buf_clear_namespace(source_bufnr, ns, 0, -1)
       api.nvim_buf_clear_namespace(asm_bufnr, ns, 0, -1)
-      api.nvim_clear_autocmds({ group = gid })
+      api.nvim_clear_autocmds { group = gid }
     end,
   })
 end

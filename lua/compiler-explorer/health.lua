@@ -45,16 +45,11 @@ M.check = function()
 
   local hostname = ce.config.get_config().url
   if not is_reachable then
-    health.error(
-      ("GET %s/api/languages failed. Server is unreachable."):format(hostname),
-      {
-        "check if the hostname is in the correct format",
-      }
-    )
+    health.error(("GET %s/api/languages failed. Server is unreachable."):format(hostname), {
+      "check if the hostname is in the correct format",
+    })
   else
-    health.ok(
-      ("GET %s/api/languages successful. Server is reachable."):format(hostname)
-    )
+    health.ok(("GET %s/api/languages successful. Server is reachable."):format(hostname))
   end
 end
 

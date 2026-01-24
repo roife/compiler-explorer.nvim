@@ -24,11 +24,7 @@ M.get = ce.async.void(function(url)
   ce.async.scheduler()
   if ret.exit ~= 0 then
     error(
-      ("curl error:\ncommand: %s\nexit_code: %d\nstderr: %s"):format(
-        ret.cmd,
-        ret.exit,
-        ret.stderr
-      )
+      ("curl error:\ncommand: %s\nexit_code: %d\nstderr: %s"):format(ret.cmd, ret.exit, ret.stderr)
     )
   end
 

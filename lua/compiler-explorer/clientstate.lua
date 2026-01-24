@@ -11,9 +11,7 @@ M.create = function()
     if api.nvim_buf_is_loaded(source_bufnr) then
       local compilers = {}
       for asm_bufnr, data in pairs(asm_data) do
-        if api.nvim_buf_is_loaded(asm_bufnr) then
-          table.insert(compilers, data)
-        end
+        if api.nvim_buf_is_loaded(asm_bufnr) then table.insert(compilers, data) end
       end
 
       local lines = api.nvim_buf_get_lines(source_bufnr, 0, -1, false)
@@ -31,7 +29,7 @@ M.create = function()
 
   if vim.tbl_isempty(sessions) then return nil end
 
-  return vim.base64.encode(vim.json.encode({ sessions = sessions }))
+  return vim.base64.encode(vim.json.encode { sessions = sessions })
 end
 
 M.ASM_NAME = "asm"
@@ -56,9 +54,7 @@ end
 
 M.get_info_by_asm = function(asm_bufnr)
   for source_bufnr, asm_data in pairs(M.state) do
-    if asm_data[asm_bufnr] then
-      return source_bufnr, asm_data[asm_bufnr]
-    end
+    if asm_data[asm_bufnr] then return source_bufnr, asm_data[asm_bufnr] end
   end
   return nil, nil
 end

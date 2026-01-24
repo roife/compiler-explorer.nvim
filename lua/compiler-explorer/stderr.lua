@@ -22,11 +22,7 @@ local severity_map = {
 }
 
 local function is_full_err(err)
-  return err.tag
-    and err.tag.column
-    and err.tag.line
-    and err.tag.severity
-    and err.tag.text
+  return err.tag and err.tag.column and err.tag.line and err.tag.severity and err.tag.text
 end
 
 local function trim_msg_severity(err)
@@ -54,11 +50,11 @@ M.add_diagnostics = function(stderr, bufnr, offset)
 
   diagnostic.reset(ns)
   diagnostic.set(ns, bufnr, diagnostics)
-  diagnostic.setqflist({
+  diagnostic.setqflist {
     namespace = ns,
     open = conf.open_qflist and (#diagnostics > 0),
     title = "Compiler Explorer",
-  })
+  }
 end
 
 return M

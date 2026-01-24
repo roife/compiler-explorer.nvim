@@ -7,62 +7,34 @@ end
 if vim.g.loaded_compiler_explorer == 1 then return end
 vim.g.loaded_compiler_explorer = 1
 
-command(
-  "CECompile",
-  function(opts) require("compiler-explorer").compile(opts, false) end,
-  {
-    range = "%",
-    bang = true,
-    nargs = "*",
-    complete = function(arg_lead, _, _)
-      return require("compiler-explorer.cache").complete_fn(arg_lead)
-    end,
-  }
-)
+command("CECompile", function(opts) require("compiler-explorer").compile(opts, false) end, {
+  range = "%",
+  bang = true,
+  nargs = "*",
+  complete = function(arg_lead, _, _)
+    return require("compiler-explorer.cache").complete_fn(arg_lead)
+  end,
+})
 
-command(
-  "CECompileLive",
-  function(opts) require("compiler-explorer").compile(opts, true) end,
-  {
-    range = "%",
-    nargs = "*",
-    complete = function(arg_lead, _, _)
-      return require("compiler-explorer.cache").complete_fn(arg_lead)
-    end,
-  }
-)
+command("CECompileLive", function(opts) require("compiler-explorer").compile(opts, true) end, {
+  range = "%",
+  nargs = "*",
+  complete = function(arg_lead, _, _)
+    return require("compiler-explorer.cache").complete_fn(arg_lead)
+  end,
+})
 
-command(
-  "CECompileLLVMIR",
-  function(opts) require("compiler-explorer").compile_llvm_ir(opts) end,
-  {
-    range = "%",
-    bang = true,
-  }
-)
+command("CECompileLLVMIR", function(opts) require("compiler-explorer").compile_llvm_ir(opts) end, {
+  range = "%",
+  bang = true,
+})
 
 command("CEFormat", function() require("compiler-explorer").format() end, {})
 
-command(
-  "CEAddLibrary",
-  function() require("compiler-explorer").add_library() end,
-  {}
-)
+command("CEAddLibrary", function() require("compiler-explorer").add_library() end, {})
 
-command(
-  "CELoadExample",
-  function() require("compiler-explorer").load_example() end,
-  {}
-)
+command("CELoadExample", function() require("compiler-explorer").load_example() end, {})
 
-command(
-  "CEOpenWebsite",
-  function() require("compiler-explorer").open_website() end,
-  {}
-)
+command("CEOpenWebsite", function() require("compiler-explorer").open_website() end, {})
 
-command(
-  "CEDeleteCache",
-  function() require("compiler-explorer.cache").delete() end,
-  {}
-)
+command("CEDeleteCache", function() require("compiler-explorer.cache").delete() end, {})
