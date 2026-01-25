@@ -9,7 +9,7 @@ local M = {}
 local function smart_split(conf)
   if conf.split ~= "auto" then
     vim.cmd(conf.split)
-  elseif vim.o.columns > vim.o.lines * 2 then
+  elseif vim.o.columns >= vim.o.lines then
     vim.cmd("vsplit")
   else
     vim.cmd("split")
