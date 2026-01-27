@@ -33,6 +33,17 @@ M.libraries_get = function(lang)
   return get(url)
 end
 
+M.shortlinkinfo_get = function(link_id)
+  if link_id == nil or type(link_id) ~= "string" or link_id == "" then
+    error("shortlinkinfo_get requires a non-empty link id", 0)
+  end
+
+  local conf = ce.config.get_config()
+  local url = table.concat({ conf.url, "api", "shortlinkinfo", link_id }, "/")
+
+  return get(url)
+end
+
 M.tooltip_get = function(arch, instruction)
   local conf = ce.config.get_config()
   local url = table.concat({ conf.url, "api", "asm", arch, instruction }, "/")
@@ -61,6 +72,13 @@ M.format_post = function(formatter_id, req_body)
   local url = table.concat({ conf.url, "api", "format", formatter_id }, "/")
 
   return post(url, req_body, "Formatting")
+end
+
+M.shortener_post = function(req_body)
+  local conf = ce.config.get_config()
+  local url = table.concat({ conf.url, "api", "shortener" }, "/")
+
+  return post(url, req_body, "Sharing")
 end
 
 M.compilers_get = function(lang)

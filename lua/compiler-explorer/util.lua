@@ -22,11 +22,7 @@ function M.create_ir_window(bufnr, asm_bufnr, compiler_id, filetype)
   if bufnr == nil then
     bufnr = api.nvim_create_buf(false, true)
 
-    local buf_name = "compiler-explorer://"
-      .. compiler_id
-      .. "-"
-      .. asm_bufnr
-      .. "-ir"
+    local buf_name = "compiler-explorer://" .. compiler_id .. "-" .. asm_bufnr .. "-ir"
     api.nvim_buf_set_name(bufnr, buf_name)
 
     api.nvim_set_option_value("ft", filetype, { buf = bufnr })
@@ -56,10 +52,7 @@ function M.create_window_buffer(bufnr, compiler_id, new_buffer)
   if asm_bufnr == nil or new_buffer then
     asm_bufnr = api.nvim_create_buf(false, true)
 
-    local buf_name = "compiler-explorer://"
-      .. compiler_id
-      .. "-"
-      .. bufnr
+    local buf_name = "compiler-explorer://" .. compiler_id .. "-" .. bufnr
     api.nvim_buf_set_name(asm_bufnr, buf_name)
 
     api.nvim_set_option_value("ft", "asm", { buf = asm_bufnr })
@@ -140,9 +133,7 @@ function M.write_output_buf(bufnr, lines, opts)
   api.nvim_buf_clear_namespace(bufnr, -1, 0, -1)
   api.nvim_set_option_value("modifiable", true, { buf = bufnr })
   api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
-  if opts.new_buf_name then
-    api.nvim_buf_set_name(bufnr, opts.new_buf_name)
-  end
+  if opts.new_buf_name then api.nvim_buf_set_name(bufnr, opts.new_buf_name) end
   api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 end
 

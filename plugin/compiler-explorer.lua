@@ -44,6 +44,12 @@ command("CEAddLibrary", function() require("compiler-explorer").add_library() en
 
 command("CELoadExample", function() require("compiler-explorer").load_example() end, {})
 
+command("CELoadShortlink", function(opts) require("compiler-explorer").load_shortlink(opts) end, {
+  nargs = "?",
+})
+
+command("CEShareShortlink", function() require("compiler-explorer").share_shortlink() end, {})
+
 command("CEOpenWebsite", function() require("compiler-explorer").open_website() end, {})
 
 command("CEDeleteCache", function() require("compiler-explorer.cache").delete() end, {})

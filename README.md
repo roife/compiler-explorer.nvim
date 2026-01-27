@@ -84,6 +84,8 @@ compiler-explorer-commands` or the table below:
 | `:CEFormat` | Format the source code. | source code buffer |
 | `:CEAddLibrary` | Add a library to be used by future calls of `:CECompile`. | source code buffer |
 | `:CELoadExample` | Load an existing code example to a new tab. | any buffer |
+| `:CELoadShortlink` | Load a shortlink into a new tab and compile its compilers. | any buffer |
+| `:CEShareShortlink` | Create a shortlink for the current sessions and copy it to the clipboard. | any buffer |
 | `:CEOpenWebsite` | Open the website using the source code and compilers from previous `:CECompile` calls. | any buffer |
 | `:CEDeleteCache` | Clear the json cache where the compilers and languages are stored. | any buffer |
 | `:CEShowTooltip` | Show information about a specific instruction under cursor. | assembly buffer |
@@ -155,7 +157,7 @@ require("compiler-explorer").setup({
 - [x] `GET  /api/languages`
 - [x] `GET  /api/compilers/<lang-id>`
 - [x] `GET  /api/libraries/<lang-id>`
-- [ ] `GET  /api/shortlinkinfo/<link-id>`
+- [x] `GET  /api/shortlinkinfo/<link-id>`
 - [x] `POST /api/compiler/<compiler-id>/compile`
 - [x] `GET  /api/formats`
 - [x] `POST /api/format/<formatter>`

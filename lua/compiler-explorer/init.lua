@@ -75,6 +75,15 @@ local function ensure_compiler_selection(args)
   return compiler
 end
 
+local function extract_shortlink_id(raw)
+  if raw == nil then return nil end
+  local id = raw:match("/api/shortlinkinfo/([^/?#]+)")
+    or raw:match("/z/([^/?#]+)")
+    or raw:match("/shortlink/([^/?#]+)")
+    or raw
+  return id
+end
+
 M.compile = ce.async.void(function(opts, live)
   local args = ce.util.parse_args(opts.fargs)
 
@@ -302,7 +311,8 @@ M.compile_opt_pipeline = ce.async.void(function(opts)
   end
 
   -- Write opt pipeline output to buffer
-  local opt_bufnr = ce.util.create_ir_window(info.opt_pipeline.bufnr, asm_bufnr, compiler.id, "llvm")
+  local opt_bufnr =
+    ce.util.create_ir_window(info.opt_pipeline.bufnr, asm_bufnr, compiler.id, "llvm")
   info.opt_pipeline = {
     bufnr = opt_bufnr,
     selected_group = opts.selected_group or "",
@@ -341,6 +351,30 @@ M.open_website = function()
   local url = table.concat({ conf.url, "clientstate", state }, "/")
   vim.cmd(table.concat({ "silent", cmd, url }, " "))
 end
+
+M.share_shortlink = ce.async.void(function()
+  local sessions = ce.clientstate.build_sessions()
+  if sessions == nil then
+    ce.alert.warn("No compiler configurations were found. Run :CECompile before this.")
+    return
+  end
+
+  local ok, response = pcall(ce.rest.shortener_post, { sessions = sessions })
+  if not ok then
+    ce.alert.error(response)
+    return
+  end
+
+  local url = response.url
+  if url == nil then
+    ce.alert.error("Shortener did not return a url.")
+    return
+  end
+
+  local register = (fn.has("clipboard") == 1) and "+" or '"'
+  pcall(fn.setreg, register, url)
+  ce.alert.info("Shortlink copied: %s", url)
+end)
 
 M.add_library = ce.async.void(function()
   local lang_list = ce.rest.languages_get()
@@ -503,6 +537,103 @@ M.load_example = ce.async.void(function()
     api.nvim_set_option_value("filetype", ft, { buf = 0 })
   else
     vim.filetype.match(bufname, 0)
+  end
+end)
+
+M.load_shortlink = ce.async.void(function(opts)
+  local raw = opts and opts.fargs and opts.fargs[1] or nil
+  local link_id = extract_shortlink_id(raw)
+  if link_id == nil or link_id == "" then
+    link_id = ce.util.prompt_input { prompt = "Shortlink or link_id> " }
+    link_id = extract_shortlink_id(link_id)
+  end
+  if link_id == nil or link_id == "" then
+    ce.alert.error("No valid shortlink or link_id provided.")
+    return
+  end
+
+  local ok, response = pcall(ce.rest.shortlinkinfo_get, link_id)
+  if not ok then
+    ce.alert.error(response)
+    return
+  end
+
+  local sessions = response.sessions
+    or (response.config and response.config.sessions)
+    or (response.state and response.state.sessions)
+
+  if sessions == nil or vim.tbl_isempty(sessions) then
+    ce.alert.error("Shortlink %s did not include any sessions.", link_id)
+    return
+  end
+
+  local langs = ce.rest.languages_get()
+
+  for i, session in ipairs(sessions) do
+    if session.source == nil then
+      ce.alert.warn("Shortlink session %d did not include source.", i)
+      goto continue
+    end
+
+    local lang_id = session.language or ""
+    local extension = ".txt"
+    for _, lang in ipairs(langs) do
+      if lang.id == lang_id and lang.extensions and #lang.extensions > 0 then
+        extension = lang.extensions[1]
+        break
+      end
+    end
+
+    -- Create new tab with source code
+    local bufname = session.filename or ("godbolt-" .. link_id .. "-" .. i .. extension)
+    vim.cmd("tabedit")
+    local source_bufnr = api.nvim_get_current_buf()
+    local source_winid = api.nvim_get_current_win()
+    api.nvim_buf_set_lines(source_bufnr, 0, -1, false, vim.split(session.source, "\n"))
+    api.nvim_buf_set_name(source_bufnr, bufname)
+    local ft = vim.filetype.match { filename = bufname }
+    if ft then
+      api.nvim_set_option_value("filetype", ft, { buf = source_bufnr })
+    end
+
+    if session.compilers == nil or vim.tbl_isempty(session.compilers) then
+      ce.alert.warn("Shortlink session %d did not include compilers.", i)
+      goto continue
+    end
+
+    for _, compiler in ipairs(session.compilers) do
+      if compiler and compiler.id then
+        local fargs = {
+          "compiler=" .. compiler.id,
+          "flags=" .. (compiler.options or ""),
+        }
+        if compiler.filters then
+          for key, value in pairs(compiler.filters) do
+            table.insert(fargs, key .. "=" .. tostring(value))
+          end
+        end
+        if compiler.libs then
+          vim.b.libs = {}
+          for _, lib in ipairs(compiler.libs) do
+            local id = lib.id or lib.name
+            local version = lib.version or lib.ver
+            if id and version then vim.b.libs[id] = version end
+          end
+        end
+        if compiler.tools then
+          vim.b.tools = vim.tbl_map(function(tool) return tool.id end, compiler.tools)
+        end
+        M.compile({
+          line1 = 1,
+          line2 = api.nvim_buf_line_count(source_bufnr),
+          fargs = fargs,
+          bang = true,
+        }, false)
+        api.nvim_set_current_win(source_winid)
+      end
+    end
+
+    ::continue::
   end
 end)
 

@@ -93,6 +93,15 @@ COMMANDS                                          *compiler-explorer-commands*
 :CELoadExample                                                *:CELoadExample*
                         Load an existing code example to a new tab.
 
+:CELoadShortlink                                          *:CELoadShortlink*
+                        Load a shortlink into a new tab and compile the
+                        compilers from that session. If no shortlink id is
+                        provided, the user is prompted to enter one.
+
+:CEShareShortlink                                        *:CEShareShortlink*
+                        Create a shortlink for the current sessions and copy
+                        it to the clipboard.
+
                                                              
 :CEOpenWebsite                                               *:CEOpenWebsite!*
                         Open the website with the local source code and
