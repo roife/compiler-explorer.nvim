@@ -4,7 +4,7 @@ local M = {}
 
 M.state = {}
 
-local function build_sessions()
+M.build_sessions = function()
   local sessions = {}
   local id = 1
   for source_bufnr, asm_data in pairs(M.state) do
@@ -31,10 +31,8 @@ local function build_sessions()
   return sessions
 end
 
-M.build_sessions = function() return build_sessions() end
-
 M.create = function()
-  local sessions = build_sessions()
+  local sessions = M.build_sessions()
   if sessions == nil then return nil end
 
   return vim.base64.encode(vim.json.encode { sessions = sessions })
