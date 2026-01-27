@@ -16,13 +16,17 @@ local function smart_split(conf)
   end
 end
 
-function M.create_ir_window(bufnr, compiler_id, filetype)
+function M.create_ir_window(bufnr, asm_bufnr, compiler_id, filetype)
   local conf = ce.config.get_config()
 
   if bufnr == nil then
     bufnr = api.nvim_create_buf(false, true)
 
-    local buf_name = "compiler-explorer://" .. compiler_id .. filetype .. "-" .. math.random(100)
+    local buf_name = "compiler-explorer://"
+      .. compiler_id
+      .. "-"
+      .. asm_bufnr
+      .. "-ir"
     api.nvim_buf_set_name(bufnr, buf_name)
 
     api.nvim_set_option_value("ft", filetype, { buf = bufnr })
@@ -44,7 +48,7 @@ function M.create_ir_window(bufnr, compiler_id, filetype)
 end
 
 -- Creates a new buffer and window or uses the previous one.
-function M.create_window_buffer(bufnr, compiler_id, new_buffer, filetype)
+function M.create_window_buffer(bufnr, compiler_id, new_buffer)
   local conf = ce.config.get_config()
 
   local asm_bufnr, winid = ce.clientstate.get_last_asm_bufwin(bufnr)
@@ -55,12 +59,10 @@ function M.create_window_buffer(bufnr, compiler_id, new_buffer, filetype)
     local buf_name = "compiler-explorer://"
       .. compiler_id
       .. "-"
-      .. filetype
-      .. "-"
-      .. math.random(100)
+      .. bufnr
     api.nvim_buf_set_name(asm_bufnr, buf_name)
 
-    api.nvim_set_option_value("ft", filetype, { buf = asm_bufnr })
+    api.nvim_set_option_value("ft", "asm", { buf = asm_bufnr })
     api.nvim_set_option_value("bufhidden", "wipe", { buf = asm_bufnr })
   end
 
@@ -133,10 +135,14 @@ function M.prompt_input(opts)
   return value
 end
 
-function M.write_output_buf(bufnr, lines)
+function M.write_output_buf(bufnr, lines, opts)
+  opts = opts or {}
   api.nvim_buf_clear_namespace(bufnr, -1, 0, -1)
   api.nvim_set_option_value("modifiable", true, { buf = bufnr })
   api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
+  if opts.new_buf_name then
+    api.nvim_buf_set_name(bufnr, opts.new_buf_name)
+  end
   api.nvim_set_option_value("modifiable", false, { buf = bufnr })
 end
 

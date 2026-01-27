@@ -29,6 +29,15 @@ command("CECompileLLVMIR", function(opts) require("compiler-explorer").compile_l
   bang = true,
 })
 
+command(
+  "CECompileOptPipeline",
+  function(opts) require("compiler-explorer").compile_opt_pipeline(opts) end,
+  {
+    range = "%",
+    bang = true,
+  }
+)
+
 command("CEFormat", function() require("compiler-explorer").format() end, {})
 
 command("CEAddLibrary", function() require("compiler-explorer").add_library() end, {})

@@ -26,6 +26,7 @@ provided by [nvim-notify](https://github.com/rcarriga/nvim-notify).
 - Add libraries.
 - Show tooltips about specific instructions.
 - Jump to label definitions.
+- Inspect LLVM optimization pipeline output and step through passes.
 - Load example code.
 - Open the website with the local state (source code and compilers).
 
@@ -79,6 +80,7 @@ compiler-explorer-commands` or the table below:
 | `:CECompile` | Compile the source code in the current buffer and dump assembly output to a new window. Also accepts a visual selection. | source code buffer |
 | `:CECompileLive` | Same as `:CECompile`, but it will also try to recompile the source code every time the buffer is saved. | source code buffer |
 | `:CECompileLLVMIR` | Toggle LLVM IR output for the last `:CECompile` run. | source code buffer |
+| `:CECompileOptPipeline` | Generate LLVM opt pipeline output for the last `:CECompile` run. | assembly buffer |
 | `:CEFormat` | Format the source code. | source code buffer |
 | `:CEAddLibrary` | Add a library to be used by future calls of `:CECompile`. | source code buffer |
 | `:CELoadExample` | Load an existing code example to a new tab. | any buffer |
@@ -86,6 +88,10 @@ compiler-explorer-commands` or the table below:
 | `:CEDeleteCache` | Clear the json cache where the compilers and languages are stored. | any buffer |
 | `:CEShowTooltip` | Show information about a specific instruction under cursor. | assembly buffer |
 | `:CEGotoLabel` | Jump to the label definition under cursor. | assembly buffer |
+| `:CEOptPipelineNextPass` | Go to next optimization pass. | opt pipeline buffer |
+| `:CEOptPipelinePrevPass` | Go to previous optimization pass. | opt pipeline buffer |
+| `:CEOptPipelineSelectPass` | Select a specific optimization pass. | opt pipeline buffer |
+| `:CEOptPipelineSelectGroup` | Select a pass group. | opt pipeline buffer |
 
 <details>
 <summary>Examples</summary>
@@ -103,6 +109,8 @@ compiler-explorer-commands` or the table below:
 - `:CECompile binary=true` show binary opcodes and address using virtual text.
 - `:CECompile intel=false` use AT&T syntax instead of intel.
 - `:CECompileLLVMIR` opens or closes the LLVM IR window for the last compile.
+- `:CECompileOptPipeline` opens the opt pipeline window from the last compile (run from the ASM output buffer).
+- In the opt pipeline buffer, use `]p` / `[p` for next/prev pass and `gp` / `gP` to select pass/group.
 - `:CECompileLive` creates an autcommand that runs `:CECompile` every time
   the buffer is saved (`BufWritePost`).
 
@@ -131,6 +139,7 @@ require("compiler-explorer").setup({
   split = "split", -- How to split the window after the second compile (split/vsplit).
   compiler_flags = "", -- Default flags passed to the compiler.
   job_timeout_ms = 25000, -- Timeout for libuv job in milliseconds.
+  opt_pipeline_view = "after", -- Default view for opt pipeline ("before" or "after").
   languages = { -- Language specific default compiler/flags
     --c = {
     --  compiler = "g121",

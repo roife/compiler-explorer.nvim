@@ -11,6 +11,7 @@ M.defaults = {
   split = "auto", -- How to split the window after the second compile (split/vsplit).
   compiler_flags = "",
   job_timeout_ms = 25000, -- Timeout for libuv job in milliseconds.
+  opt_pipeline_view = "after", -- Default view for opt pipeline ("before" or "after").
   languages = { -- Language specific default compiler/flags
     --c = {
     --  compiler = "g121",
@@ -37,6 +38,11 @@ function M.setup(user_config)
     },
     compiler_flags = { conf.compiler_flags, "string" },
     job_timeout_ms = { conf.job_timeout_ms, "number" },
+    opt_pipeline_view = {
+      conf.opt_pipeline_view,
+      function(v) return v == "before" or v == "after" end,
+      "before or after",
+    },
     languages = { conf.languages, "table" },
   }
 

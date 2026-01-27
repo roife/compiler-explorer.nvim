@@ -13,15 +13,15 @@ local function get_buf_contents(source_bufnr, range)
   return table.concat(lines, "\n")
 end
 
+local function get_compiler(compiler_id)
+  local ok, compiler = pcall(ce.rest.check_compiler, compiler_id)
+  return ok and compiler or nil
+end
+
 local function ensure_compiler_selection(args)
   -- Get compiler from args
-  local ok, compiler = pcall(ce.rest.check_compiler, args.compiler)
-  if not ok then
-    ce.alert.error("Could not compile code with compiler id %s", args.compiler)
-    return nil
-  elseif compiler then
-    return compiler
-  end
+  local compiler = get_compiler(args.compiler)
+  if compiler then return compiler end
 
   local conf = ce.config.get_config()
 
@@ -56,8 +56,7 @@ local function ensure_compiler_selection(args)
   if lang_conf then conf = vim.tbl_deep_extend("force", conf, lang_conf) end
 
   if conf.compiler then
-    ok, compiler = pcall(ce.rest.check_compiler, conf.compiler)
-    if not ok then ce.alert.error("Could not compile code with compiler id %s", conf.compiler) end
+    compiler = get_compiler(conf.compiler)
   else
     local compilers = ce.rest.compilers_get(lang.id)
     compiler = ce.util.prompt_select(compilers, {
@@ -104,7 +103,7 @@ M.compile = ce.async.void(function(opts, live)
 
   -- Write output to buffer
   local asm_bufnr = opts.reuse_bufnr
-    or ce.util.create_window_buffer(source_bufnr, compiler.id, opts.bang, "asm")
+    or ce.util.create_window_buffer(source_bufnr, compiler.id, opts.bang)
   local asm_lines = vim.tbl_map(function(line) return line.text end, response.asm)
   ce.util.write_output_buf(asm_bufnr, asm_lines)
   if args.binary then ce.util.set_binary_extmarks(response.asm, asm_bufnr) end
@@ -112,13 +111,22 @@ M.compile = ce.async.void(function(opts, live)
   -- Update LLVM IR if needed
   local _, info = ce.clientstate.get_info_by_asm(asm_bufnr)
   local ir_bufnr = info and info.ir_bufnr or nil
+  local opt_pipeline = info and info.opt_pipeline or {}
 
-  ce.clientstate.save_info(source_bufnr, asm_bufnr, body, {
+  ce.clientstate.save_info(source_bufnr, body, {
     range = { line1 = opts.line1, line2 = opts.line2 },
+    asm_bufnr = asm_bufnr,
     ir_bufnr = ir_bufnr,
+    opt_pipeline = opt_pipeline,
   })
   if ir_bufnr then M.compile_llvm_ir { asm_bufnr = asm_bufnr } end
-
+  if opt_pipeline.bufnr then
+    M.compile_opt_pipeline {
+      asm_bufnr = asm_bufnr,
+      selected_group = opt_pipeline.selected_group,
+      selected_pass = opt_pipeline.selected_pass,
+    }
+  end
 
   -- Create autocmd for live compilation
   if live and not opts.reuse_bufnr then
@@ -162,8 +170,8 @@ M.compile_llvm_ir = ce.async.void(function(opts)
     return
   end
 
-  local ok, compiler = pcall(ce.rest.check_compiler, info.compiler_id)
-  if not ok or not compiler then
+  local compiler = get_compiler(info.compiler_id)
+  if compiler == nil then
     ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
     return
   end
@@ -200,8 +208,7 @@ M.compile_llvm_ir = ce.async.void(function(opts)
   body.options.filters.binary = false
 
   -- Compile
-  local response
-  ok, response = pcall(ce.rest.compile_post, compiler.id, body)
+  local ok, response = pcall(ce.rest.compile_post, compiler.id, body)
   if not ok then
     ce.alert.error(response)
     return
@@ -214,12 +221,10 @@ M.compile_llvm_ir = ce.async.void(function(opts)
     ce.alert.info("LLVM IR generated with %s compiler.", compiler.name)
   else
     ce.alert.error("Could not generate LLVM IR with %s", compiler.name)
-    ce.alert.error("%s", vim.inspect(body))
-    ce.alert.error("%s", vim.inspect(response))
   end
 
   -- Write IR output to buffer
-  local ir_bufnr = ce.util.create_ir_window(info.ir_bufnr, compiler.id, "llvm")
+  local ir_bufnr = ce.util.create_ir_window(info.ir_bufnr, asm_bufnr, compiler.id, "llvm")
   local ir_lines = vim.tbl_map(function(line) return line.text end, response.irOutput.asm)
   ce.util.write_output_buf(ir_bufnr, ir_lines)
 
@@ -231,6 +236,85 @@ M.compile_llvm_ir = ce.async.void(function(opts)
     api.nvim_set_current_win(asm_winid)
   end
   ce.autocmd.init_line_match(source_bufnr, ir_bufnr, response.irOutput.asm, info.range.line1 - 1)
+end)
+
+M.compile_opt_pipeline = ce.async.void(function(opts)
+  local asm_bufnr = opts.asm_bufnr or api.nvim_get_current_buf()
+
+  local source_bufnr, info = ce.clientstate.get_info_by_asm(asm_bufnr)
+  if info == nil then
+    ce.alert.warn("Run :CECompileOptPipeline on an ASM output buffer.")
+    return
+  end
+
+  local compiler = get_compiler(info.compiler_id)
+  if compiler == nil then
+    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
+    return
+  end
+
+  -- Prepare args
+  local args = {
+    source = get_buf_contents(source_bufnr, info.range),
+    compiler = compiler.id,
+    flags = info.flags or "",
+    lang = compiler.lang,
+  }
+  if info.filters then
+    for key, value in pairs(info.filters) do
+      args[key] = value
+    end
+  end
+
+  -- Prepare body for opt pipeline compilation
+  local body = ce.rest.create_compile_body(args)
+  body.options.compilerOptions.produceOptPipeline = {
+    filterDebugInfo = true,
+    filterIRMetadata = false,
+    fullModule = false,
+    noDiscardValueNames = true,
+    demangle = true,
+    libraryFunctions = true,
+  }
+  body.options.filters.binary = false
+
+  -- Compile
+  local ok, response = pcall(ce.rest.compile_post, compiler.id, body)
+  if not ok then
+    ce.alert.error(response)
+    return
+  end
+
+  local output = response.optPipelineOutput
+  if output == nil or output == vim.NIL then
+    ce.alert.error("Compiler %s does not support opt pipeline output.", compiler.name)
+    return
+  end
+  if output.error then
+    ce.alert.error("Opt pipeline error: %s", output.error)
+    return
+  end
+
+  if response.code == 0 then
+    ce.alert.info("Opt pipeline generated with %s compiler.", compiler.name)
+  else
+    ce.alert.error("Could not generate opt pipeline with %s", compiler.name)
+  end
+
+  -- Write opt pipeline output to buffer
+  local opt_bufnr = ce.util.create_ir_window(info.opt_pipeline.bufnr, asm_bufnr, compiler.id, "llvm")
+  info.opt_pipeline = {
+    bufnr = opt_bufnr,
+    selected_group = opts.selected_group or "",
+    selected_pass = opts.selected_pass or "",
+  }
+  ce.opt_pipeline.setup_buffer(opt_bufnr)
+  ce.opt_pipeline.set_results(opt_bufnr, info, output.results or {})
+
+  if not opts.asm_bufnr then
+    local asm_winid = fn.bufwinid(asm_bufnr)
+    api.nvim_set_current_win(asm_winid)
+  end
 end)
 
 M.open_website = function()

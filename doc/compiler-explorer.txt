@@ -127,6 +127,7 @@ the possible options can be found in the config.lua module.
     split = "split", -- How to split the window after the second compile (split/vsplit).
     compiler_flags = "", -- Default flags passed to the compiler.
     job_timeout_ms = 25000, -- Timeout for libuv job in milliseconds.
+    opt_pipeline_view = "after", -- Default view for opt pipeline ("before" or "after").
     languages = { -- Language specific default compiler/flags
       --c = {
       --  compiler = "g121",

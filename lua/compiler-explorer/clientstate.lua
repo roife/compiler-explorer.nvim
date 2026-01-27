@@ -32,10 +32,8 @@ M.create = function()
   return vim.base64.encode(vim.json.encode { sessions = sessions })
 end
 
-M.ASM_NAME = "asm"
-M.IR_NAME = "ir"
-
-M.save_info = function(source_bufnr, asm_bufnr, body, opts)
+M.save_info = function(source_bufnr, body, opts)
+  local asm_bufnr = opts.asm_bufnr
   M.state[source_bufnr] = M.state[source_bufnr] or {}
 
   M.state[source_bufnr][asm_bufnr] = {
@@ -48,7 +46,9 @@ M.save_info = function(source_bufnr, asm_bufnr, body, opts)
       body.options.libraries
     ),
     range = opts.range,
+    asm_bufnr = asm_bufnr,
     ir_bufnr = opts.ir_bufnr,
+    opt_pipeline = opts.opt_pipeline,
   }
 end
 
@@ -57,6 +57,15 @@ M.get_info_by_asm = function(asm_bufnr)
     if asm_data[asm_bufnr] then return source_bufnr, asm_data[asm_bufnr] end
   end
   return nil, nil
+end
+
+M.get_info_by_opt_pipeline = function(opt_pipeline_bufnr)
+  for _, asm_data in pairs(M.state) do
+    for _, data in pairs(asm_data) do
+      if data.opt_pipeline and data.opt_pipeline.bufnr == opt_pipeline_bufnr then return data end
+    end
+  end
+  return nil
 end
 
 M.get_last_asm_bufwin = function(source_bufnr)
