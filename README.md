@@ -26,6 +26,7 @@ provided by [nvim-notify](https://github.com/rcarriga/nvim-notify).
 - Add libraries.
 - Show tooltips about specific instructions.
 - Jump to label definitions.
+- Compile to LLVM IR and Rust MIR.
 - Inspect LLVM optimization pipeline output and step through passes.
 - Load example code.
 - Open the website with the local state (source code and compilers).

@@ -143,7 +143,10 @@ M.compile = ce.async.void(function(opts, live)
   -- Compile
   local body = ce.rest.create_compile_body(args)
   local ok, response = pcall(ce.rest.compile_post, compiler.id, body)
-  if not ok then ce.alert.error(response) end
+  if not ok then
+    ce.alert.error(response)
+    return
+  end
   if response.code == 0 then
     ce.alert.info("Compilation done with %s compiler.", compiler.name)
   else
