@@ -29,6 +29,11 @@ command("CECompileLLVMIR", function(opts) require("compiler-explorer").compile_l
   bang = true,
 })
 
+command("CECompileRustMIR", function(opts) require("compiler-explorer").compile_rust_mir(opts) end, {
+  range = "%",
+  bang = true,
+})
+
 command(
   "CECompileOptPipeline",
   function(opts) require("compiler-explorer").compile_opt_pipeline(opts) end,

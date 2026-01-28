@@ -54,6 +54,7 @@ M.save_info = function(source_bufnr, body, opts)
     range = opts.range,
     asm_bufnr = asm_bufnr,
     ir_bufnr = opts.ir_bufnr,
+    rust_mir_bufnr = opts.rust_mir_bufnr,
     opt_pipeline = opts.opt_pipeline,
   }
 end

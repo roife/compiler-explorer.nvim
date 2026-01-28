@@ -16,13 +16,14 @@ local function smart_split(conf)
   end
 end
 
-function M.create_ir_window(bufnr, asm_bufnr, compiler_id, filetype)
+function M.create_ir_window(bufnr, asm_bufnr, compiler_id, filetype, kind)
   local conf = ce.config.get_config()
+  local suffix = kind or "ir"
 
   if bufnr == nil then
     bufnr = api.nvim_create_buf(false, true)
 
-    local buf_name = "compiler-explorer://" .. compiler_id .. "-" .. asm_bufnr .. "-ir"
+    local buf_name = "compiler-explorer://" .. compiler_id .. "-" .. asm_bufnr .. "-" .. suffix
     api.nvim_buf_set_name(bufnr, buf_name)
 
     api.nvim_set_option_value("ft", filetype, { buf = bufnr })

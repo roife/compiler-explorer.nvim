@@ -120,15 +120,18 @@ M.compile = ce.async.void(function(opts, live)
   -- Update LLVM IR if needed
   local _, info = ce.clientstate.get_info_by_asm(asm_bufnr)
   local ir_bufnr = info and info.ir_bufnr or nil
+  local rust_mir_bufnr = info and info.rust_mir_bufnr or nil
   local opt_pipeline = info and info.opt_pipeline or {}
 
   ce.clientstate.save_info(source_bufnr, body, {
     range = { line1 = opts.line1, line2 = opts.line2 },
     asm_bufnr = asm_bufnr,
     ir_bufnr = ir_bufnr,
+    rust_mir_bufnr = rust_mir_bufnr,
     opt_pipeline = opt_pipeline,
   })
   if ir_bufnr then M.compile_llvm_ir { asm_bufnr = asm_bufnr } end
+  if rust_mir_bufnr then M.compile_rust_mir { asm_bufnr = asm_bufnr } end
   if opt_pipeline.bufnr then
     M.compile_opt_pipeline {
       asm_bufnr = asm_bufnr,
@@ -233,7 +236,7 @@ M.compile_llvm_ir = ce.async.void(function(opts)
   end
 
   -- Write IR output to buffer
-  local ir_bufnr = ce.util.create_ir_window(info.ir_bufnr, asm_bufnr, compiler.id, "llvm")
+  local ir_bufnr = ce.util.create_ir_window(info.ir_bufnr, asm_bufnr, compiler.id, "llvm", "ir")
   local ir_lines = vim.tbl_map(function(line) return line.text end, response.irOutput.asm)
   ce.util.write_output_buf(ir_bufnr, ir_lines)
 
@@ -245,6 +248,75 @@ M.compile_llvm_ir = ce.async.void(function(opts)
     api.nvim_set_current_win(asm_winid)
   end
   ce.autocmd.init_line_match(source_bufnr, ir_bufnr, response.irOutput.asm, info.range.line1 - 1)
+end)
+
+M.compile_rust_mir = ce.async.void(function(opts)
+  local asm_bufnr = opts.asm_bufnr or api.nvim_get_current_buf()
+
+  local source_bufnr, info = ce.clientstate.get_info_by_asm(asm_bufnr)
+  if info == nil then
+    ce.alert.warn("Run :CECompileRustMIR on an ASM output buffer.")
+    return
+  end
+
+  local compiler = get_compiler(info.compiler_id)
+  if compiler == nil then
+    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
+    return
+  end
+
+  if compiler.supportsRustMirView == false then
+    ce.alert.error("Compiler %s does not support Rust MIR output.", compiler.name)
+    return
+  end
+
+  -- Prepare args
+  local args = {
+    source = get_buf_contents(source_bufnr, info.range),
+    compiler = compiler.id,
+    flags = info.flags or "",
+    lang = compiler.lang,
+  }
+  if info.filters then
+    for key, value in pairs(info.filters) do
+      args[key] = value
+    end
+  end
+
+  -- Prepare body for Rust MIR compilation
+  local body = ce.rest.create_compile_body(args)
+  body.options.compilerOptions.produceRustMir = true
+  body.options.filters.binary = false
+
+  -- Compile
+  local ok, response = pcall(ce.rest.compile_post, compiler.id, body)
+  if not ok then
+    ce.alert.error(response)
+    return
+  end
+  if response.rustMirOutput == nil or response.rustMirOutput == vim.NIL then
+    ce.alert.error("Compiler %s does not support Rust MIR output.", compiler.name)
+    return
+  end
+  if response.code == 0 then
+    ce.alert.info("Rust MIR generated with %s compiler.", compiler.name)
+  else
+    ce.alert.error("Could not generate Rust MIR with %s", compiler.name)
+  end
+
+  -- Write Rust MIR output to buffer
+  local mir_bufnr =
+    ce.util.create_ir_window(info.rust_mir_bufnr, asm_bufnr, compiler.id, "rust", "rust_mir")
+  local mir_lines = vim.tbl_map(function(line) return line.text end, response.rustMirOutput)
+  ce.util.write_output_buf(mir_bufnr, mir_lines)
+
+  -- Update clientstate
+  info.rust_mir_bufnr = mir_bufnr
+
+  if not opts.asm_bufnr then
+    local asm_winid = fn.bufwinid(asm_bufnr)
+    api.nvim_set_current_win(asm_winid)
+  end
 end)
 
 M.compile_opt_pipeline = ce.async.void(function(opts)
@@ -312,7 +384,7 @@ M.compile_opt_pipeline = ce.async.void(function(opts)
 
   -- Write opt pipeline output to buffer
   local opt_bufnr =
-    ce.util.create_ir_window(info.opt_pipeline.bufnr, asm_bufnr, compiler.id, "llvm")
+    ce.util.create_ir_window(info.opt_pipeline.bufnr, asm_bufnr, compiler.id, "llvm", "opt_pipeline")
   info.opt_pipeline = {
     bufnr = opt_bufnr,
     selected_group = opts.selected_group or "",

@@ -81,6 +81,10 @@ COMMANDS                                          *compiler-explorer-commands*
                         Toggle LLVM IR output for the last |:CECompile| run.
                         This reuses the compiler and flags from that run.
 
+:CECompileRustMIR                                           *:CECompileRustMIR*
+                        Toggle Rust MIR output for the last |:CECompile| run.
+                        This reuses the compiler and flags from that run.
+
 :CEFormat                                                          *:CEFormat*
                         Format the source code found in the current buffer
                         with a formatter selected by the user.
