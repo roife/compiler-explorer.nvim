@@ -84,6 +84,46 @@ local function extract_shortlink_id(raw)
   return id
 end
 
+local function get_aux_context(opts, cmd_name)
+  local asm_bufnr = opts.asm_bufnr or api.nvim_get_current_buf()
+
+  local source_bufnr, info = ce.clientstate.get_info_by_asm(asm_bufnr)
+  if info == nil then
+    ce.alert.warn(("Run :%s on an ASM output buffer."):format(cmd_name))
+    return nil
+  end
+
+  local compiler = get_compiler(info.compiler_id)
+  if compiler == nil then
+    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
+    return nil
+  end
+
+  return asm_bufnr, source_bufnr, info, compiler
+end
+
+local function build_compile_args(source_bufnr, info, compiler)
+  local args = {
+    source = get_buf_contents(source_bufnr, info.range),
+    compiler = compiler.id,
+    flags = info.flags or "",
+    lang = compiler.lang,
+  }
+  if info.filters then
+    for key, value in pairs(info.filters) do
+      args[key] = value
+    end
+  end
+  return args
+end
+
+local function restore_asm_window(asm_bufnr, opts)
+  if not opts.asm_bufnr then
+    local asm_winid = fn.bufwinid(asm_bufnr)
+    api.nvim_set_current_win(asm_winid)
+  end
+end
+
 M.compile = ce.async.void(function(opts, live)
   local args = ce.util.parse_args(opts.fargs)
 
@@ -174,19 +214,8 @@ M.compile = ce.async.void(function(opts, live)
 end)
 
 M.compile_llvm_ir = ce.async.void(function(opts)
-  local asm_bufnr = opts.asm_bufnr or api.nvim_get_current_buf()
-
-  local source_bufnr, info = ce.clientstate.get_info_by_asm(asm_bufnr)
-  if info == nil then
-    ce.alert.warn("Run :CECompileLLVMIR on an ASM output buffer.")
-    return
-  end
-
-  local compiler = get_compiler(info.compiler_id)
-  if compiler == nil then
-    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
-    return
-  end
+  local asm_bufnr, source_bufnr, info, compiler = get_aux_context(opts, "CECompileLLVMIR")
+  if asm_bufnr == nil then return end
 
   if compiler.supportsIrView == false then
     ce.alert.error("Compiler %s does not support LLVM IR output.", compiler.name)
@@ -194,17 +223,7 @@ M.compile_llvm_ir = ce.async.void(function(opts)
   end
 
   -- Prepare args
-  local args = {
-    source = get_buf_contents(source_bufnr, info.range),
-    compiler = compiler.id,
-    flags = info.flags or "",
-    lang = compiler.lang,
-  }
-  if info.filters then
-    for key, value in pairs(info.filters) do
-      args[key] = value
-    end
-  end
+  local args = build_compile_args(source_bufnr, info, compiler)
 
   -- Prepare body for IR compilation
   local body = ce.rest.create_compile_body(args)
@@ -243,27 +262,13 @@ M.compile_llvm_ir = ce.async.void(function(opts)
   -- Update clientstate
   info.ir_bufnr = ir_bufnr
 
-  if not opts.asm_bufnr then
-    local asm_winid = fn.bufwinid(asm_bufnr)
-    api.nvim_set_current_win(asm_winid)
-  end
+  restore_asm_window(asm_bufnr, opts)
   ce.autocmd.init_line_match(source_bufnr, ir_bufnr, response.irOutput.asm, info.range.line1 - 1)
 end)
 
 M.compile_rust_mir = ce.async.void(function(opts)
-  local asm_bufnr = opts.asm_bufnr or api.nvim_get_current_buf()
-
-  local source_bufnr, info = ce.clientstate.get_info_by_asm(asm_bufnr)
-  if info == nil then
-    ce.alert.warn("Run :CECompileRustMIR on an ASM output buffer.")
-    return
-  end
-
-  local compiler = get_compiler(info.compiler_id)
-  if compiler == nil then
-    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
-    return
-  end
+  local asm_bufnr, source_bufnr, info, compiler = get_aux_context(opts, "CECompileRustMIR")
+  if asm_bufnr == nil then return end
 
   if compiler.supportsRustMirView == false then
     ce.alert.error("Compiler %s does not support Rust MIR output.", compiler.name)
@@ -271,17 +276,7 @@ M.compile_rust_mir = ce.async.void(function(opts)
   end
 
   -- Prepare args
-  local args = {
-    source = get_buf_contents(source_bufnr, info.range),
-    compiler = compiler.id,
-    flags = info.flags or "",
-    lang = compiler.lang,
-  }
-  if info.filters then
-    for key, value in pairs(info.filters) do
-      args[key] = value
-    end
-  end
+  local args = build_compile_args(source_bufnr, info, compiler)
 
   -- Prepare body for Rust MIR compilation
   local body = ce.rest.create_compile_body(args)
@@ -313,39 +308,15 @@ M.compile_rust_mir = ce.async.void(function(opts)
   -- Update clientstate
   info.rust_mir_bufnr = mir_bufnr
 
-  if not opts.asm_bufnr then
-    local asm_winid = fn.bufwinid(asm_bufnr)
-    api.nvim_set_current_win(asm_winid)
-  end
+  restore_asm_window(asm_bufnr, opts)
 end)
 
 M.compile_opt_pipeline = ce.async.void(function(opts)
-  local asm_bufnr = opts.asm_bufnr or api.nvim_get_current_buf()
-
-  local source_bufnr, info = ce.clientstate.get_info_by_asm(asm_bufnr)
-  if info == nil then
-    ce.alert.warn("Run :CECompileOptPipeline on an ASM output buffer.")
-    return
-  end
-
-  local compiler = get_compiler(info.compiler_id)
-  if compiler == nil then
-    ce.alert.error("Could not compile code with compiler id %s", info.compiler_id)
-    return
-  end
+  local asm_bufnr, source_bufnr, info, compiler = get_aux_context(opts, "CECompileOptPipeline")
+  if asm_bufnr == nil then return end
 
   -- Prepare args
-  local args = {
-    source = get_buf_contents(source_bufnr, info.range),
-    compiler = compiler.id,
-    flags = info.flags or "",
-    lang = compiler.lang,
-  }
-  if info.filters then
-    for key, value in pairs(info.filters) do
-      args[key] = value
-    end
-  end
+  local args = build_compile_args(source_bufnr, info, compiler)
 
   -- Prepare body for opt pipeline compilation
   local body = ce.rest.create_compile_body(args)
@@ -393,10 +364,7 @@ M.compile_opt_pipeline = ce.async.void(function(opts)
   ce.opt_pipeline.setup_buffer(opt_bufnr)
   ce.opt_pipeline.set_results(opt_bufnr, info, output.results or {})
 
-  if not opts.asm_bufnr then
-    local asm_winid = fn.bufwinid(asm_bufnr)
-    api.nvim_set_current_win(asm_winid)
-  end
+  restore_asm_window(asm_bufnr, opts)
 end)
 
 M.open_website = function()
